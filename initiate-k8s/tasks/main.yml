@@ -1,0 +1,11 @@
+- name: Install docker python SDK
+  pip:
+    name: docker
+    executable: pip3
+  become: true
+
+- name: Create kind instances
+  include_tasks: kind.yml
+  loop: "{{ range(1, kind_instance_amount + 1, 1) | list }}"
+  loop_control:
+    loop_var: k8s_instance

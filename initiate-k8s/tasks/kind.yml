@@ -1,0 +1,52 @@
+- name: Check if kind "cluster-{{ '%02d' | format(k8s_instance) }}" instance is running
+  docker_container_info:
+    name: "cluster-{{ '%02d' | format(k8s_instance) }}-control-plane"
+  register: kind_status
+  become: true
+
+- name: Initiate kind installation for "cluster-{{ '%02d' | format(k8s_instance) }}"
+  block: 
+  - name: Generate kind configuration file
+    template:
+      src: kind.yaml.j2
+      dest: /tmp/kind.yaml
+    become: true
+
+  - name: Install "cluster-{{ '%02d' | format(k8s_instance) }}" kind instance
+    shell: "kind create cluster --config /tmp/kind.yaml"
+    become: true
+  when: not kind_status.exists
+
+- name: Get ArgoCD managed clusters
+  uri:
+    url: "https://{{ argocd_server_url }}/api/v1/clusters"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ argo_token }}"
+    validate_certs: false
+    return_content: yes
+  register: argocd_cluster_status
+  become: true
+
+- name: Set kind name for ArgoCD conditions
+  set_fact:
+    formatted_kind_instance: "kind-cluster-{{ '%02d' | format(k8s_instance) }}"
+
+- name: Add kind to ArgoCD
+  block:
+  - name: Change IP address for kubernetes context in kubeconfig
+    shell: sed -i "s/0.0.0.0/{{ server_ip }}/g" /root/.kube/config
+    become: true
+  
+  - name: Change security verification in kubeconfig
+    shell: "sed -i 's/certificate-authority.*/insecure-skip-tls-verify: true/g' /root/.kube/config"
+    become: true
+
+  - name: Set kind context to "cluster-{{ '%02d' | format(k8s_instance) }}"
+    shell: "kubectl cluster-info --context kind-cluster-{{ '%02d' | format(k8s_instance) }} --insecure-skip-tls-verify=true"
+    become: true
+
+  - name: Add "cluster-{{ '%02d' | format(k8s_instance) }}" kind instance to ArgoCD
+    shell: "argocd cluster add --insecure --label state=managed --auth-token {{ argo_token }} --server {{ argocd_server_url }} kind-cluster-{{ '%02d' | format(k8s_instance) }}" 
+    become: true
+  when: argocd_cluster_status.json['items'] | selectattr('name', 'equalto', formatted_kind_instance) | list | count == 0

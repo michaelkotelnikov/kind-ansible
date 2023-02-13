@@ -1,0 +1,13 @@
+- name: Opening ports in Azure VM
+  azure.azcollection.azure_rm_securitygroup:
+    resource_group: "{{ resource_group }}"
+    name: "{{ network_security_group }}"
+    subscription_id: "{{ subscription_id }}"
+    rules:
+    - name: "{{ '10%02d-rule' | format(item) }}"
+      priority: "{{ '10%02d' | format(item) }}"
+      protocol: Tcp
+      destination_port_range: "{{ '10%02d' | format(item) }}"
+      access: Allow
+      direction: Inbound
+  loop: "{{ range(1, kind_instance_amount + 1, 1) | list }}"

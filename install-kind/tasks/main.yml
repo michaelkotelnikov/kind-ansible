@@ -1,0 +1,42 @@
+- name: Configure Docker repository
+  yum_repository:
+    name: docker-ce
+    description: Docker CE Stable - Sources
+    baseurl: "{{ docker_repo_url }}"
+    gpgcheck: no
+  become: true
+
+- name: Install dependencies for kind
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ kind_packages }}"
+  become: true
+
+- name: Enable Docker daemon
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  become: true
+
+- name: Install kind
+  get_url:
+    url: "{{ kind_url }}"
+    dest: "/bin/kind"
+    mode: "0101"
+  become: true
+
+- name: Install kubectl
+  get_url:
+    url: "{{ kubectl_url }}"
+    dest: "/bin/kubectl"
+    mode: "0101"
+  become: true
+
+- name: Install argocd
+  get_url:
+    url: "{{ argocd_url }}"
+    dest: "/bin/argocd"
+    mode: "0101"
+  become: true
