@@ -38,7 +38,7 @@
     shell: sed -i "s/0.0.0.0/{{ server_ip }}/g" /root/.kube/config
     become: true
   
-  - name: Change security verification in kubeconfig
+  - name: Change certificate verification in kubeconfig
     shell: "sed -i 's/certificate-authority.*/insecure-skip-tls-verify: true/g' /root/.kube/config"
     become: true
 
